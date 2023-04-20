@@ -13,6 +13,7 @@ public class IsolationTest{
     static public void write_stm (Statement write, int val) throws SQLException{
         String stm = "UPDATE UNREPEATABLE SET  data = " + val;
         write.executeUpdate(stm);
+        write.executeUpdate("COMMIT");
         System.out.println("Writing to the database with stament: " + stm );
     }
     public static void main(String[] args){
@@ -56,12 +57,15 @@ public class IsolationTest{
                 Statement read = readCon.createStatement();
                 Statement write = writeCon.createStatement();
                 write.execute(connectToDB);
+                read.executeUpdate("START TRANSACTION");
+                write.executeUpdate("START TRANSACTION");
                 String stm = "SELECT * FROM UNREPEATABLE";
                 read_stm(read, stm);
                 write_stm(write, 19);
                 read_stm(read, stm);
                 write_stm(write,157);
                 read_stm(read, stm);
+                read.executeUpdate("COMMIT");
                 
                 //Droping the database for the next experiment
                 String dbName = createDBStmt.split(" ")[2];
