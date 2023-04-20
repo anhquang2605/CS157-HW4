@@ -2,28 +2,39 @@ import java.sql.*;
 import java.util.*;
 import java.io.*;
 public class IsolationTest{
+    static public void read_stm (Statement read, String stm) throws SQLException{
+        ResultSet rs = read.executeQuery(stm);
+        System.out.println("Reading from the database with stament: " + stm );
+        System.out.print("Result read: ");
+        while(rs.next()){
+            System.out.println(rs.getInt(1));
+        }
+    }
+    static public void write_stm (Statement write, int val) throws SQLException{
+        String stm = "UPDATE UNREPEATABLE SET  data = " + val;
+        write.executeUpdate(stm);
+        System.out.println("Writing to the database with stament: " + stm );
+    }
     public static void main(String[] args){
-        final String sqliteConnection = "jdbc:sqlite:";
+        //final String sqliteConnection = "jdbc:sqlite:";
         final String mysqlConnection = "jdbc:mysql://localhost";
         final String mysqlUsername = "root";
         final String mysqlPassword = "CS157bmysql";
 
-        Connection con1 = null;
-        Connection con2 = null;
-        try{
-            con1 = DriverManager.getConnection(mysqlConnection, mysqlUsername, mysqlPassword);
-            con2 = DriverManager.getConnection(mysqlConnection, mysqlUsername, mysqlPassword);
-
-            ResultSet dbNames = con1.getMetaData().getCatalogs();
-            boolean dbExists = false;
-            while(dbNames.next()){
-                String existingDB = dbNames.getString(1);
-                if("ISOLATION_TEST".equals(existingDB)){
-                    dbExists = true;
-                }
-            }
-            dbNames.close();
-            if(!dbExists){
+        Connection readCon = null;
+        Connection writeCon = null;
+        //READ COMMITED ISOLATION WITH executeUpdate
+        String read_commited_stmt = "SET TRANSACTION ISOLATION LEVEL READ COMMITTED";
+        //SERIALIZABLE ISOLATION WITH executeUpdate
+        String serializable_stmt = "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE";
+        String[] stmts = {read_commited_stmt, serializable_stmt};
+        String connectToDB = "USE ISOLATION_TEST";
+        String insert = "INSERT INTO UNREPEATABLE VALUES (15)";
+        for(int i = 0; i < 2; i++){
+            try{
+                readCon = DriverManager.getConnection(mysqlConnection, mysqlUsername, mysqlPassword);
+                writeCon = DriverManager.getConnection(mysqlConnection, mysqlUsername, mysqlPassword);
+                
                 FileInputStream dbFile = new FileInputStream("MakeDB.txt");
                 Scanner sc = new Scanner(dbFile);
                 String createDBStmt = "";
@@ -32,14 +43,37 @@ public class IsolationTest{
                     createDBStmt = sc.nextLine();
                     createTableStmt = sc.nextLine();
                 }
-                //Statement createDB = con1.createStatement();
-                //createDB.execute(createDBStmt);
+                sc.close();
+                Statement createDB = readCon.createStatement();
+                createDB.execute(createDBStmt);
+                createDB.execute(connectToDB);
+                createDB.execute(createTableStmt);
+                createDB.executeUpdate(insert);
+                //Isolation level is set here, 0 is read commited, 1 is serializable
+                createDB.executeUpdate(stmts[i]);
+                //Interleaving the two transactions
+                Statement read = readCon.createStatement();
+                Statement write = writeCon.createStatement();
+                String stm = "SELECT * FROM UNREPEATABLE";
+                read_stm(read, stm);
+                write_stm(write, 19);
+                read_stm(read, stm);
+                write_stm(write,157);
+                read_stm(read, stm);
+                
+                //Droping the database for the next experiment
+                String dbName = createDBStmt.split(" ")[2];
+                String dropDBStm = "DROP DATABASE " + dbName;
+                Statement dropDB = writeCon.createStatement();
+                dropDB.execute(dropDBStm);
+                //Next have your program close and reestablish the two connections
+                readCon.close();
+                writeCon.close();
             }
-            con1.close();
-            con2.close();
-        }
-        catch(Exception e){
-            System.out.println(e.getMessage());
+            catch(Exception e){
+                System.out.println(e.getMessage());
+            }
+            System.out.println();
         }
     }
 }
