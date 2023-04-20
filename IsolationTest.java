@@ -50,6 +50,7 @@ public class IsolationTest{
                 createDB.execute(createTableStmt);
                 createDB.executeUpdate(insert);
                 //Isolation level is set here, 0 is read commited, 1 is serializable
+                System.out.println("Isolation level: " + stmts[i]);
                 createDB.executeUpdate(stmts[i]);
                 //Interleaving the two transactions
                 Statement read = readCon.createStatement();
