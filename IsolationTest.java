@@ -54,6 +54,7 @@ public class IsolationTest{
                 //Interleaving the two transactions
                 Statement read = readCon.createStatement();
                 Statement write = writeCon.createStatement();
+                write.execute(connectToDB);
                 String stm = "SELECT * FROM UNREPEATABLE";
                 read_stm(read, stm);
                 write_stm(write, 19);
